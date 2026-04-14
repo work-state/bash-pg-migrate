@@ -1,0 +1,7 @@
+.env
+
+migrations/*
+!migrations/.gitkeep
+
+schemas/*
+!schemas/.gitkeep
