@@ -48,12 +48,17 @@ ensure_database() {
 
 # Create the _migrations tracking table if it does not exist
 ensure_migrations_table() {
-  run_sql -qc "
+  if ! run_sql -qc "
     CREATE TABLE IF NOT EXISTS _migrations (
       id          SERIAL PRIMARY KEY,
       filename    VARCHAR(255) NOT NULL UNIQUE,
       checksum    VARCHAR(64),
       applied_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
-  " 2>/dev/null
+  "; then
+    log_error "Failed to create _migrations table in '${DB_NAME}'."
+    log_info  "Make sure '${DB_USER}' has CREATE privilege on the public schema:"
+    log_info  "  GRANT CREATE ON SCHEMA public TO ${DB_USER};"
+    exit 1
+  fi
 }
