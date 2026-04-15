@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Snapshot — schema dump generation
+# Snapshot — per-table schema dump
 # =============================================================================
 
-# Dump the CREATE TABLE DDL for every public table (except _migrations)
-# into individual files under schemas/
+# Dump the DDL for every table in DB_SCHEMA into individual files under schemas/.
+# Each file captures the table's own columns, indexes, sequences, and outgoing
+# foreign key constraints. Incoming FK constraints (defined on other tables) are
+# not included — see header comment written into each file.
 generate_schema_snapshot() {
   if ! command -v pg_dump &>/dev/null; then
     log_error "pg_dump is not installed or not in PATH."
@@ -17,12 +19,12 @@ generate_schema_snapshot() {
   local tables
   tables=$(run_sql -tAc "
     SELECT tablename FROM pg_tables
-    WHERE schemaname = 'public' AND tablename != '_migrations'
+    WHERE schemaname = '${DB_SCHEMA}' AND tablename != '_migrations'
     ORDER BY tablename;
   " 2>/dev/null || echo "")
 
   if [[ -z "$tables" ]]; then
-    log_info "No tables found. Skipping snapshot."
+    log_info "No tables found in schema '${DB_SCHEMA}'. Skipping snapshot."
     return
   fi
 
@@ -32,14 +34,13 @@ generate_schema_snapshot() {
     local output_file="${SCHEMAS_DIR}/${table}.sql"
 
     {
-      echo "-- Table: ${table}"
+      echo "-- Table: ${DB_SCHEMA}.${table}"
+      echo "-- Database: ${DB_NAME}"
       echo "-- Auto-generated snapshot ($(date '+%Y-%m-%d %H:%M:%S'))"
       echo "-- DO NOT EXECUTE — this is a reference file only."
       echo "--"
-      echo "-- This file reflects the live database state as reported by pg_dump."
-      echo "-- SERIAL columns are expanded into their underlying sequence + default."
-      echo "-- Cross-table foreign keys and objects outside this table (indexes on"
-      echo "-- other tables, views, functions, triggers) are not included."
+      echo "-- Includes: columns, sequences, indexes, constraints, and outgoing FK references."
+      echo "-- Excludes: FK constraints from other tables pointing to this one."
       echo "-- The migrations/ directory is the source of truth for schema changes."
       echo ""
       PGPASSWORD="${DB_PASSWORD}" pg_dump \
@@ -51,10 +52,12 @@ generate_schema_snapshot() {
         --no-owner \
         --no-privileges \
         --no-comments \
-        -t "${table}" 2>/dev/null \
-        | sed '/^--/d; /^SET /d; /^SELECT /d; /^\\restrict /d; /^\\unrestrict /d; /^$/d'
+        --schema="${DB_SCHEMA}" \
+        -t "${DB_SCHEMA}.${table}" \
+        2>/dev/null \
+        | sed '/^--/d; /^SET /d; /^SELECT /d; /^\\connect /d; /^\\restrict /d; /^\\unrestrict /d; /^$/d'
     } > "$output_file"
 
-    log_success "Snapshot: ${SCHEMAS_DIR}/${table}.sql"
+    log_success "Snapshot: ${output_file}"
   done <<< "$tables"
 }

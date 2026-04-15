@@ -48,6 +48,9 @@ load_env() {
     fi
   done
 
+  # Schema — default to public if not specified
+  DB_SCHEMA="${DB_SCHEMA:-public}"
+
   # Resolve paths — use .env overrides if provided, otherwise default to
   # directories next to migrate.sh
   MIGRATIONS_DIR="${MIGRATIONS_DIR:-${PROJECT_DIR}/migrations}"

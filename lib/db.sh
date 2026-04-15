@@ -7,7 +7,9 @@
 
 # Run a SQL command against the target database
 run_sql() {
-  PGPASSWORD="${DB_PASSWORD}" psql \
+  PGPASSWORD="${DB_PASSWORD}" \
+  PGOPTIONS="-c search_path=${DB_SCHEMA}" \
+  psql \
     -h "${DB_HOST}" \
     -p "${DB_PORT}" \
     -d "${DB_NAME}" \
@@ -49,16 +51,17 @@ ensure_database() {
 # Create the _migrations tracking table if it does not exist
 ensure_migrations_table() {
   if ! run_sql -qc "
-    CREATE TABLE IF NOT EXISTS _migrations (
+    SET client_min_messages TO warning;
+    CREATE TABLE IF NOT EXISTS ${DB_SCHEMA}._migrations (
       id          SERIAL PRIMARY KEY,
       filename    VARCHAR(255) NOT NULL UNIQUE,
       checksum    VARCHAR(64),
       applied_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
   "; then
-    log_error "Failed to create _migrations table in '${DB_NAME}'."
-    log_info  "Make sure '${DB_USER}' has CREATE privilege on the public schema:"
-    log_info  "  GRANT CREATE ON SCHEMA public TO ${DB_USER};"
+    log_error "Failed to create _migrations table in schema '${DB_SCHEMA}'."
+    log_info  "Make sure '${DB_USER}' has CREATE privilege on the '${DB_SCHEMA}' schema:"
+    log_info  "  GRANT CREATE ON SCHEMA ${DB_SCHEMA} TO ${DB_USER};"
     exit 1
   fi
 }
