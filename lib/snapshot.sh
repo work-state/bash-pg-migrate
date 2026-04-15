@@ -35,6 +35,12 @@ generate_schema_snapshot() {
       echo "-- Table: ${table}"
       echo "-- Auto-generated snapshot ($(date '+%Y-%m-%d %H:%M:%S'))"
       echo "-- DO NOT EXECUTE — this is a reference file only."
+      echo "--"
+      echo "-- This file reflects the live database state as reported by pg_dump."
+      echo "-- SERIAL columns are expanded into their underlying sequence + default."
+      echo "-- Cross-table foreign keys and objects outside this table (indexes on"
+      echo "-- other tables, views, functions, triggers) are not included."
+      echo "-- The migrations/ directory is the source of truth for schema changes."
       echo ""
       PGPASSWORD="${DB_PASSWORD}" pg_dump \
         -h "${DB_HOST}" \
