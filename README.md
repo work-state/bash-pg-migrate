@@ -31,7 +31,7 @@ A lightweight, zero-dependency PostgreSQL migration runner written in pure Bash.
 
 - **Ordered, atomic migrations** — each migration runs inside a `BEGIN/COMMIT` block; if any statement fails the whole migration rolls back.
 - **Tamper detection** — a SHA-256 checksum of every applied migration's UP block is stored in the database; re-running `up` will abort if a file was modified after it was applied.
-- **Schema snapshots** — after every `up` or `down` run, the live schema of each public table is dumped via `pg_dump` into a `schemas/` directory, giving you a always-up-to-date reference.
+- **Schema snapshots** — after every `up` or `down` run, the live schema of each table in the configured schema (`DB_SCHEMA`, defaults to `public`) is dumped via `pg_dump` into a `schemas/` directory, giving you an always-up-to-date reference.
 - **No external runtime** — the only dependencies are `psql`, `pg_dump`, and standard POSIX utilities (`sed`, `awk`, `sha256sum`/`shasum`).
 
 ---
@@ -149,14 +149,22 @@ DB_PASSWORD=secret
 **Optional overrides:**
 
 ```dotenv
-# Override where migration files are stored (default: ./migrations)
-MIGRATIONS_DIR=./migrations
+# PostgreSQL schema to manage (default: public)
+# DB_SCHEMA=public
 
-# Override where schema snapshots are written (default: ./schemas)
-SCHEMAS_DIR=./schemas
+# Override where migration files are stored (default: <project-root>/migrations)
+# MIGRATIONS_DIR=/absolute/path/to/migrations
+
+# Override where schema snapshots are written (default: <project-root>/schemas)
+# SCHEMAS_DIR=/absolute/path/to/schemas
 ```
 
 Copy `.env.example` to `.env` and adjust to match your environment. The script validates that all five required variables are present before connecting.
+
+`DB_SCHEMA` controls three things at once:
+- The schema where the `_migrations` tracking table is created
+- The `search_path` used for every query, so unqualified table names in your migration SQL resolve to the right schema
+- The schema captured by the snapshot command
 
 ---
 
@@ -315,7 +323,7 @@ Open the file, fill in your SQL, and run `./migrate.sh up`.
 ./migrate.sh snapshot
 ```
 
-Manually regenerates schema snapshots for all public tables (excluding the internal `_migrations` table) without running any migrations. Useful when you want to refresh `schemas/` after making changes directly in the database during development.
+Manually regenerates schema snapshots for all tables in the configured schema (excluding the internal `_migrations` table) without running any migrations. Useful when you want to refresh `schemas/` after making changes directly in the database during development.
 
 ```
 [INFO]  Generating schema snapshots...
@@ -354,27 +362,38 @@ General options:
 
 ## Schema Snapshots
 
-After every `up` and `down` run, `pgmigrate` automatically calls `pg_dump` for each public table and writes the result to `schemas/<table>.sql`. These files:
+After every `up` and `down` run, `pgmigrate` generates one snapshot file per table under `schemas/`. Each file:
 
-- Are **read-only references** — they should never be executed directly.
-- Give developers a quick, human-readable view of the current schema without connecting to the database.
-- Can be committed to version control to track how your schema evolves over time.
+- Is a **read-only reference** — it should never be executed directly.
+- Captures that table's columns, sequences, indexes, constraints, and outgoing foreign key references.
+- Can be committed to version control — each table has its own file, so a migration touching `orders` only modifies `schemas/orders.sql`, keeping diffs isolated and avoiding merge conflicts in team workflows.
 
-Example `schemas/users.sql`:
+> **Note:** FK constraints defined on *other* tables that point *to* this table are not included — those belong to the other table's snapshot. This limitation is documented in each file's header.
+
+Example `schemas/orders.sql`:
 
 ```sql
--- Table: users
+-- Table: public.orders
+-- Database: myapp
 -- Auto-generated snapshot (2024-01-03 15:30:00)
 -- DO NOT EXECUTE — this is a reference file only.
+--
+-- Includes: columns, sequences, indexes, constraints, and outgoing FK references.
+-- Excludes: FK constraints from other tables pointing to this one.
+-- The migrations/ directory is the source of truth for schema changes.
 
-CREATE TABLE public.users (
+CREATE TABLE public.orders (
     id integer NOT NULL,
-    email character varying(255) NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
+    user_id integer NOT NULL,
+    total numeric(10,2) NOT NULL,
+    created_at timestamp without time zone DEFAULT now() NOT NULL
 );
+CREATE SEQUENCE public.orders_id_seq ...
+ALTER TABLE ONLY public.orders
+    ADD CONSTRAINT orders_pkey PRIMARY KEY (id);
 ```
 
-The snapshot command strips `SET` statements, `SELECT` statements, and comments produced by `pg_dump` to keep the output clean and focused on the DDL.
+The snapshot strips `SET` statements, `SELECT` statements, `\connect` directives, and blank lines produced by `pg_dump` to keep the output clean.
 
 ---
 
