@@ -61,6 +61,15 @@ apt-get install postgresql-client
 
 ## Installation
 
+### Supported platforms
+
+| Platform | Support |
+|---|---|
+| macOS | Supported — Bash 4+ recommended (installer will warn if below) |
+| Linux (Ubuntu, Debian, CentOS, Arch...) | Supported |
+| WSL (Windows Subsystem for Linux) | Supported — detected automatically, treated as Linux |
+| Windows native | Not supported — use WSL |
+
 ### Global install (recommended)
 
 Install `pgmigrate` once on your machine and run it from any project directory.
@@ -71,20 +80,26 @@ cd bash-pg-migrate
 ./install.sh
 ```
 
-This copies the library to `/usr/local/lib/pgmigrate/` and installs a launcher at `/usr/local/bin/pgmigrate`. After installation, run from any project:
+The installer will:
+- Detect your operating system and run the appropriate setup
+- Print your Bash version, `psql` version, and `pg_dump` version
+- Show exactly where files are being installed
+- Warn about any missing dependencies with OS-specific install instructions
+- Warn if the install bin directory is not in your `PATH`
+
+If writing to `/usr/local/bin` requires elevated privileges:
 
 ```sh
-cd your-project/
-pgmigrate help
+sudo ./install.sh
 ```
+
+The installer never self-escalates — you stay in control.
 
 **Custom install prefix** (e.g. for a user-local install without `sudo`):
 
 ```sh
 ./install.sh --prefix ~/.local
 ```
-
-Then make sure `~/.local/bin` is in your `PATH` — the installer will warn you if it is not.
 
 **Uninstall:**
 
