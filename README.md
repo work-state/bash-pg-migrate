@@ -452,6 +452,6 @@ The `migrations/` and `schemas/` directories are excluded from version control b
 
 ## Author
 
-**Ilyass Mabrouk**
+[Ilyass Mabrouk](https://github.com/work-state)
 
 Built to manage PostgreSQL schema migrations without introducing a heavy framework dependency.
