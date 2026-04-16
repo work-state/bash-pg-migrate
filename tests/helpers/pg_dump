@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+# =============================================================================
+# Mock pg_dump — replaces the real pg_dump binary during tests.
+# Behaviour is controlled via environment variables:
+#
+#   MOCK_PG_DUMP_FAIL=1   fail on every call
+# =============================================================================
+
+if [[ "${MOCK_PG_DUMP_FAIL:-0}" == "1" ]]; then
+  echo "pg_dump: error: connection to server failed: Connection refused" >&2
+  exit 1
+fi
+
+# Parse -t flag to determine the table being dumped
+table="test_table"
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -t) table="$2"; shift 2 ;;
+    *)  shift ;;
+  esac
+done
+
+# Strip schema prefix for constraint naming
+table_short="${table##*.}"
+
+# Emit realistic pg_dump output including comment and SET lines that
+# the snapshot sed filter is responsible for stripping.
+cat <<EOF
+-- Name: ${table_short}; Type: TABLE; Schema: public; Owner: -
+SET search_path = public, pg_catalog;
+CREATE TABLE ${table} (
+    id integer NOT NULL,
+    created_at timestamp without time zone DEFAULT now() NOT NULL
+);
+CREATE SEQUENCE ${table}_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+ALTER SEQUENCE ${table}_id_seq OWNED BY ${table}.id;
+ALTER TABLE ONLY ${table} ALTER COLUMN id SET DEFAULT nextval('${table}_id_seq'::regclass);
+ALTER TABLE ONLY ${table}
+    ADD CONSTRAINT ${table_short}_pkey PRIMARY KEY (id);
+EOF
+
+exit 0

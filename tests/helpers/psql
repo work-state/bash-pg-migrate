@@ -1,0 +1,114 @@
+#!/usr/bin/env bash
+# =============================================================================
+# Mock psql — replaces the real psql binary during tests.
+# Behaviour is controlled via environment variables:
+#
+#   MOCK_PSQL_FAIL=1          fail on every call (binary-level error)
+#   MOCK_CONN_FAIL=1          fail on connection check (SELECT 1;)
+#   MOCK_DB_EXISTS=0          report database as not found
+#   MOCK_ENSURE_TABLE_FAIL=1  fail when creating _migrations table
+#   MOCK_SQL_EXEC_FAIL=1      fail when executing migration SQL (BEGIN block)
+#   MOCK_TABLES="t1 t2"       space-separated table names to return
+#   MOCK_APPLIED_MIGRATIONS="f1.sql f2.sql"  applied migration filenames
+#   MOCK_CHECKSUM="abc123"    checksum to return for a migration
+#   MOCK_LAST_MIGRATION="f.sql" last applied migration filename
+# =============================================================================
+
+# Collect SQL: from -c flag or stdin
+sql=""
+use_stdin=true
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -c|-[a-zA-Z]*c)
+      # Matches -c, -qc, -tAc, -Ac, etc.
+      sql="$2"; use_stdin=false; shift 2 ;;
+    *) shift ;;
+  esac
+done
+
+if [[ "$use_stdin" == "true" ]]; then
+  sql=$(cat)
+fi
+
+# ---- Binary-level failure ---------------------------------------------------
+
+if [[ "${MOCK_PSQL_FAIL:-0}" == "1" ]]; then
+  echo "psql: error: connection to server on socket failed: No such file or directory" >&2
+  exit 1
+fi
+
+# ---- Connection check: SELECT 1; -------------------------------------------
+
+if echo "$sql" | grep -qE "^\s*SELECT 1;\s*$"; then
+  if [[ "${MOCK_CONN_FAIL:-0}" == "1" ]]; then
+    echo "psql: error: could not connect to server: Connection refused" >&2
+    exit 1
+  fi
+  exit 0
+fi
+
+# ---- Database existence check -----------------------------------------------
+
+if echo "$sql" | grep -q "pg_database"; then
+  echo "${MOCK_DB_EXISTS:-1}"
+  exit 0
+fi
+
+# ---- Table listing (snapshot) -----------------------------------------------
+
+if echo "$sql" | grep -q "SELECT tablename FROM pg_tables"; then
+  for table in ${MOCK_TABLES:-}; do
+    echo "$table"
+  done
+  exit 0
+fi
+
+# ---- Migration SQL execution (BEGIN...COMMIT block) -------------------------
+# Checked before CREATE TABLE because migration SQL can contain both.
+# ensure_migrations_table never uses BEGIN, so this is unambiguous.
+
+if echo "$sql" | grep -q "BEGIN"; then
+  if [[ "${MOCK_SQL_EXEC_FAIL:-0}" == "1" ]]; then
+    echo "ERROR:  syntax error at or near migration SQL" >&2
+    exit 1
+  fi
+  exit 0
+fi
+
+# ---- Migrations table creation ----------------------------------------------
+
+if echo "$sql" | grep -q "CREATE TABLE"; then
+  if [[ "${MOCK_ENSURE_TABLE_FAIL:-0}" == "1" ]]; then
+    echo "ERROR:  permission denied for schema public" >&2
+    exit 1
+  fi
+  exit 0
+fi
+
+# ---- Migration applied check ------------------------------------------------
+
+if echo "$sql" | grep -q "SELECT 1 FROM _migrations WHERE filename"; then
+  filename=$(echo "$sql" | grep -oE "filename = '[^']+'" | sed "s/filename = '//g;s/'//g")
+  if echo " ${MOCK_APPLIED_MIGRATIONS:-} " | grep -q " ${filename} "; then
+    echo "1"
+  fi
+  exit 0
+fi
+
+# ---- Checksum retrieval -----------------------------------------------------
+
+if echo "$sql" | grep -q "SELECT checksum FROM _migrations"; then
+  echo "${MOCK_CHECKSUM:-}"
+  exit 0
+fi
+
+# ---- Last applied migration -------------------------------------------------
+
+if echo "$sql" | grep -q "SELECT filename FROM _migrations ORDER BY"; then
+  echo "${MOCK_LAST_MIGRATION:-}"
+  exit 0
+fi
+
+# ---- Everything else (SET, INSERT, DELETE, etc.) ----------------------------
+exit 0
