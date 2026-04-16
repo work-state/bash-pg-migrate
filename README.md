@@ -21,6 +21,7 @@ A lightweight, zero-dependency PostgreSQL migration runner written in pure Bash.
 - [Schema Snapshots](#schema-snapshots)
 - [Checksum Protection](#checksum-protection)
 - [Directory Structure](#directory-structure)
+- [Running Tests](#running-tests)
 - [Author](#author)
 
 ---
@@ -462,6 +463,72 @@ pgmigrate/
 ```
 
 The `migrations/` and `schemas/` directories are excluded from version control by default. If you want to track migrations in git (common practice), remove the `migrations/*` line from `.gitignore`.
+
+---
+
+## Running Tests
+
+Tests use [bats-core](https://github.com/bats-core/bats-core) and require no real database — all PostgreSQL calls are intercepted by mock binaries in `tests/helpers/`.
+
+### Setup
+
+Install bats-core once on your machine:
+
+```sh
+# macOS
+brew install bats-core
+
+# Debian / Ubuntu
+sudo apt-get install bats
+
+# npm (any platform)
+npm install -g bats
+```
+
+### Running
+
+```sh
+# Run the full test suite
+./run_tests.sh
+
+# Run a single file
+./run_tests.sh tests/up.bats
+
+# TAP output (for CI)
+./run_tests.sh --tap
+```
+
+### What is covered
+
+| File | What it tests |
+|---|---|
+| `tests/env.bats` | `.env` loading, missing variables, `DB_SCHEMA` default and override, `MIGRATIONS_DIR` override |
+| `tests/connection.bats` | Successful connection, database not found, connection refused, `_migrations` table creation failure |
+| `tests/up.bats` | No migrations dir, no pending, single and multi apply, checksum mismatch, missing `-- UP`, SQL failure |
+| `tests/down.bats` | Nothing to rollback, successful rollback, missing file, missing `-- DOWN`, SQL failure |
+| `tests/status.bats` | No files, all applied, all pending, mixed state |
+| `tests/create.bats` | Missing name, timestamp prefix, `-- UP`/`-- DOWN` template, auto-create migrations dir |
+| `tests/snapshot.bats` | `pg_dump` not installed, no tables, per-table file generation, header content, SET/comment stripping |
+
+### How the mocks work
+
+`tests/helpers/psql` and `tests/helpers/pg_dump` are fake binaries that replace the real PostgreSQL tools during tests. `setup_test_env()` prepends `tests/helpers/` to `PATH` before each test so the mocks are found first.
+
+Each test controls mock behaviour through environment variables:
+
+```sh
+MOCK_CONN_FAIL=1              # simulate connection refused
+MOCK_DB_EXISTS=0              # simulate database not found
+MOCK_ENSURE_TABLE_FAIL=1      # simulate _migrations table creation failure
+MOCK_SQL_EXEC_FAIL=1          # simulate migration SQL execution failure
+MOCK_TABLES="users orders"    # tables to return in snapshot queries
+MOCK_APPLIED_MIGRATIONS="f.sql"  # already-applied migration filenames
+MOCK_CHECKSUM="abc123"        # checksum to return for a migration
+MOCK_LAST_MIGRATION="f.sql"   # last applied migration (for down command)
+MOCK_PG_DUMP_FAIL=1           # simulate pg_dump failure
+```
+
+All test operations are isolated inside a temporary directory created by `mktemp -d` and deleted after each test. The repo is never written to.
 
 ---
 
