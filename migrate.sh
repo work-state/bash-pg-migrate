@@ -21,19 +21,19 @@ export SCRIPT_DIR PROJECT_DIR
 
 # ---- Load library -----------------------------------------------------------
 
-source "${SCRIPT_DIR}/lib/constants.sh"
-source "${SCRIPT_DIR}/lib/helpers.sh"
-source "${SCRIPT_DIR}/lib/db.sh"
-source "${SCRIPT_DIR}/lib/snapshot.sh"
+source "${SCRIPT_DIR}/lib/helpers/constants.sh"
+source "${SCRIPT_DIR}/lib/helpers/helpers.sh"
+source "${SCRIPT_DIR}/lib/helpers/db.sh"
+source "${SCRIPT_DIR}/lib/helpers/snapshot.sh"
 
 # ---- Load commands ----------------------------------------------------------
 
-source "${SCRIPT_DIR}/commands/help.sh"
-source "${SCRIPT_DIR}/commands/up.sh"
-source "${SCRIPT_DIR}/commands/down.sh"
-source "${SCRIPT_DIR}/commands/status.sh"
-source "${SCRIPT_DIR}/commands/create.sh"
-source "${SCRIPT_DIR}/commands/snapshot.sh"
+source "${SCRIPT_DIR}/cmd/help/help.sh"
+source "${SCRIPT_DIR}/cmd/up/up.sh"
+source "${SCRIPT_DIR}/cmd/down/down.sh"
+source "${SCRIPT_DIR}/cmd/status/status.sh"
+source "${SCRIPT_DIR}/cmd/create/create.sh"
+source "${SCRIPT_DIR}/cmd/snapshot/snapshot.sh"
 
 # ---- Main -------------------------------------------------------------------
 

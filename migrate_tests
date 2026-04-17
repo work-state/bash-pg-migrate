@@ -3,15 +3,15 @@
 # Test runner for pgmigrate
 #
 # Usage:
-#   ./run_tests.sh                Run all tests
-#   ./run_tests.sh tests/up.bats  Run a single test file
-#   ./run_tests.sh --tap          Run all tests with TAP output
+#   ./migrate_tests               Run all tests
+#   ./migrate_tests test/up.bats  Run a single test file
+#   ./migrate_tests --tap         Run all tests with TAP output
 # =============================================================================
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TESTS_DIR="${SCRIPT_DIR}/tests"
+TESTS_DIR="${SCRIPT_DIR}/test"
 
 # ---- Colours ----------------------------------------------------------------
 
@@ -72,7 +72,7 @@ if [[ -n "$TARGET" ]]; then
   echo ""
   exec "$BATS" ${BATS_ARGS[@]+"${BATS_ARGS[@]}"} "$TARGET"
 else
-  echo -e "${BLUE}Running all tests in tests/${NC}"
+  echo -e "${BLUE}Running all tests in test/${NC}"
   echo ""
   exec "$BATS" ${BATS_ARGS[@]+"${BATS_ARGS[@]}"} \
     "${TESTS_DIR}/env.bats" \

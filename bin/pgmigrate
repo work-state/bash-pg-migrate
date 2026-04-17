@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# =============================================================================
+# pgmigrate launcher
+#
+# Installed to: <prefix>/bin/pgmigrate
+# Library at:   <prefix>/lib/pgmigrate/
+#
+# Self-aware — computes LIB_DIR relative to its own location so it works
+# with any install prefix without path patching.
+# =============================================================================
+
+SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LIB_DIR="${SELF_DIR}/../lib/pgmigrate"
+BIN_FILE="${BASH_SOURCE[0]}"
+
+if [[ "${1:-}" == "uninstall" ]]; then
+  echo "Uninstalling pgmigrate..."
+  if [[ -n "${LIB_DIR}" && -d "${LIB_DIR}" ]]; then
+    rm -rf "${LIB_DIR}" && echo "[OK]  Removed ${LIB_DIR}"
+  fi
+  if [[ -n "${BIN_FILE}" && -f "${BIN_FILE}" ]]; then
+    rm -f "${BIN_FILE}" && echo "[OK]  Removed ${BIN_FILE}"
+  fi
+  echo "[OK]  pgmigrate uninstalled."
+  exit 0
+fi
+
+exec "${LIB_DIR}/migrate.sh" "$@"

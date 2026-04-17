@@ -436,24 +436,29 @@ This prevents silent schema drift caused by editing a migration file after it ha
 ```
 pgmigrate/
 ├── migrate.sh              # Entry point — load libs, dispatch commands
+├── install.sh              # OS-aware installer
 ├── .env                    # Your local credentials (git-ignored)
 ├── .env.example            # Template to copy from
 ├── .gitignore
 │
-├── lib/
-│   ├── constants.sh        # Terminal color codes, ENV_FILE path
-│   ├── helpers.sh          # Logging, load_env, checksum, UP/DOWN extraction
-│   ├── db.sh               # run_sql, check_connection, ensure_database,
-│   │                       # ensure_migrations_table
-│   └── snapshot.sh         # generate_schema_snapshot (pg_dump per table)
+├── bin/
+│   └── pgmigrate           # Launcher — copied to <prefix>/bin/ on install
 │
-├── commands/
-│   ├── help.sh             # cmd_help
-│   ├── up.sh               # cmd_up
-│   ├── down.sh             # cmd_down
-│   ├── status.sh           # cmd_status
-│   ├── create.sh           # cmd_create
-│   └── snapshot.sh         # cmd_snapshot
+├── lib/
+│   └── helpers/
+│       ├── constants.sh    # Terminal color codes, ENV_FILE path
+│       ├── helpers.sh      # Logging, load_env, checksum, UP/DOWN extraction
+│       ├── db.sh           # run_sql, check_connection, ensure_migrations_table
+│       └── snapshot.sh     # generate_schema_snapshot (pg_dump per table)
+│
+├── cmd/
+│   ├── help/help.sh        # cmd_help
+│   ├── up/up.sh            # cmd_up
+│   ├── down/down.sh        # cmd_down
+│   ├── status/status.sh    # cmd_status
+│   ├── create/create.sh    # cmd_create
+│   └── snapshot/           # cmd_snapshot
+│       └── snapshot.sh
 │
 ├── migrations/             # Your .sql migration files (git-ignored by default)
 │   └── .gitkeep
@@ -468,7 +473,7 @@ The `migrations/` and `schemas/` directories are excluded from version control b
 
 ## Running Tests
 
-Tests use [bats-core](https://github.com/bats-core/bats-core) and require no real database — all PostgreSQL calls are intercepted by mock binaries in `tests/helpers/`.
+Tests use [bats-core](https://github.com/bats-core/bats-core) and require no real database — all PostgreSQL calls are intercepted by mock binaries in `test/helpers/`.
 
 ### Setup
 
@@ -489,13 +494,13 @@ npm install -g bats
 
 ```sh
 # Run the full test suite
-./run_tests.sh
+./migrate_tests
 
 # Run a single file
-./run_tests.sh tests/up.bats
+./migrate_tests test/up.bats
 
 # TAP output (for CI)
-./run_tests.sh --tap
+./migrate_tests --tap
 ```
 
 ### What is covered
@@ -512,7 +517,7 @@ npm install -g bats
 
 ### How the mocks work
 
-`tests/helpers/psql` and `tests/helpers/pg_dump` are fake binaries that replace the real PostgreSQL tools during tests. `setup_test_env()` prepends `tests/helpers/` to `PATH` before each test so the mocks are found first.
+`test/helpers/psql` and `test/helpers/pg_dump` are fake binaries that replace the real PostgreSQL tools during tests. `setup_test_env()` prepends `test/helpers/` to `PATH` before each test so the mocks are found first.
 
 Each test controls mock behaviour through environment variables:
 
