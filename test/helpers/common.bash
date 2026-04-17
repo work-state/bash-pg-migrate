@@ -4,7 +4,7 @@
 # =============================================================================
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-HELPERS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+MOCKS_MIGRATE_DIR="${REPO_DIR}/test/mocks/migrate"
 MIGRATE_SH="${REPO_DIR}/migrate.sh"
 
 # ---- Setup / Teardown -------------------------------------------------------
@@ -13,7 +13,7 @@ MIGRATE_SH="${REPO_DIR}/migrate.sh"
 setup_test_env() {
   TEST_PROJECT_DIR="$(mktemp -d)"
   export PGMIGRATE_PROJECT_DIR="${TEST_PROJECT_DIR}"
-  export PATH="${HELPERS_DIR}:${PATH}"
+  export PATH="${MOCKS_MIGRATE_DIR}:${PATH}"
 
   mkdir -p "${TEST_PROJECT_DIR}/migrations"
   mkdir -p "${TEST_PROJECT_DIR}/schemas"

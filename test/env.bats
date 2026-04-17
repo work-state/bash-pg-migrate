@@ -88,9 +88,9 @@ teardown() { teardown_test_env; }
   printf "DB_HOST=localhost\nDB_PORT=5432\nDB_NAME=testdb\nDB_USER=postgres\nDB_PASSWORD=secret\nMIGRATIONS_DIR=${custom_dir}\n" \
     > "${TEST_PROJECT_DIR}/.env"
   run "${MIGRATE_SH}" up
+  rm -rf "$custom_dir"
   [ "$status" -eq 0 ]
   [[ "$output" == *"No pending migrations"* ]]
-  rm -rf "$custom_dir"
 }
 
 # ---- help does not require .env ---------------------------------------------

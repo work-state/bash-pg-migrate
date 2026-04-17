@@ -452,11 +452,16 @@ pgmigrate/
 │       └── snapshot.sh     # generate_schema_snapshot (pg_dump per table)
 │
 ├── cmd/
-│   ├── help/help.sh        # cmd_help
-│   ├── up/up.sh            # cmd_up
-│   ├── down/down.sh        # cmd_down
-│   ├── status/status.sh    # cmd_status
-│   ├── create/create.sh    # cmd_create
+│   ├── help/               # cmd_help
+│   │   └── help.sh
+│   ├── up/                 # cmd_up
+│   │   └── up.sh
+│   ├── down/               # cmd_down
+│   │   └── down.sh
+│   ├── status/             # cmd_status
+│   │   └── status.sh
+│   ├── create/             # cmd_create
+│   │   └── create.sh
 │   └── snapshot/           # cmd_snapshot
 │       └── snapshot.sh
 │
@@ -473,7 +478,7 @@ The `migrations/` and `schemas/` directories are excluded from version control b
 
 ## Running Tests
 
-Tests use [bats-core](https://github.com/bats-core/bats-core) and require no real database — all PostgreSQL calls are intercepted by mock binaries in `test/helpers/`.
+Tests use [bats-core](https://github.com/bats-core/bats-core) and require no real database — all PostgreSQL calls are intercepted by mock binaries in `test/mocks/`.
 
 ### Setup
 
@@ -493,44 +498,27 @@ npm install -g bats
 ### Running
 
 ```sh
-# Run the full test suite
-./migrate_tests
-
-# Run a single file
-./migrate_tests test/up.bats
-
-# TAP output (for CI)
-./migrate_tests --tap
+./migrate_tests   # tests for migrate.sh
+./install_tests   # tests for install.sh
 ```
 
 ### What is covered
 
-| File | What it tests |
-|---|---|
-| `tests/env.bats` | `.env` loading, missing variables, `DB_SCHEMA` default and override, `MIGRATIONS_DIR` override |
-| `tests/connection.bats` | Successful connection, database not found, connection refused, `_migrations` table creation failure |
-| `tests/up.bats` | No migrations dir, no pending, single and multi apply, checksum mismatch, missing `-- UP`, SQL failure |
-| `tests/down.bats` | Nothing to rollback, successful rollback, missing file, missing `-- DOWN`, SQL failure |
-| `tests/status.bats` | No files, all applied, all pending, mixed state |
-| `tests/create.bats` | Missing name, timestamp prefix, `-- UP`/`-- DOWN` template, auto-create migrations dir |
-| `tests/snapshot.bats` | `pg_dump` not installed, no tables, per-table file generation, header content, SET/comment stripping |
+**`migrate_tests`** — `migrate.sh`
 
-### How the mocks work
+`test/env.bats`, `test/connection.bats`, `test/up.bats`, `test/down.bats`, `test/status.bats`, `test/create.bats`, `test/snapshot.bats`
 
-`test/helpers/psql` and `test/helpers/pg_dump` are fake binaries that replace the real PostgreSQL tools during tests. `setup_test_env()` prepends `test/helpers/` to `PATH` before each test so the mocks are found first.
+**`install_tests`** — `install.sh` and `bin/pgmigrate`
 
-Each test controls mock behaviour through environment variables:
+`test/install.bats`
+
+Each install test controls the simulated OS via:
 
 ```sh
-MOCK_CONN_FAIL=1              # simulate connection refused
-MOCK_DB_EXISTS=0              # simulate database not found
-MOCK_ENSURE_TABLE_FAIL=1      # simulate _migrations table creation failure
-MOCK_SQL_EXEC_FAIL=1          # simulate migration SQL execution failure
-MOCK_TABLES="users orders"    # tables to return in snapshot queries
-MOCK_APPLIED_MIGRATIONS="f.sql"  # already-applied migration filenames
-MOCK_CHECKSUM="abc123"        # checksum to return for a migration
-MOCK_LAST_MIGRATION="f.sql"   # last applied migration (for down command)
-MOCK_PG_DUMP_FAIL=1           # simulate pg_dump failure
+MOCK_OS="macos"       # default
+MOCK_OS="linux"
+MOCK_OS="windows"     # triggers the unsupported-platform exit
+MOCK_OS="unsupported"
 ```
 
 All test operations are isolated inside a temporary directory created by `mktemp -d` and deleted after each test. The repo is never written to.

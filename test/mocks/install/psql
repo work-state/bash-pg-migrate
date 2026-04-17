@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# =============================================================================
+# Minimal mock psql for install.sh tests.
+# install.sh only needs: command -v psql (existence check) and psql --version
+# (informational output). Both are satisfied by a script that exits 0.
+# =============================================================================
+
+exit 0

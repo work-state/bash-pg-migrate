@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# =============================================================================
+# Mock uname for install.sh tests.
+# Controlled via MOCK_OS — ignored flags, always outputs the OS string.
+# =============================================================================
+
+case "${MOCK_OS:-macos}" in
+  macos)       echo "Darwin" ;;
+  linux)       echo "Linux" ;;
+  windows)     echo "MINGW64_NT-10.0" ;;
+  unsupported) echo "FreeBSD" ;;
+esac
+
+exit 0

@@ -14,15 +14,14 @@ teardown() { teardown_test_env; }
   # Build a PATH that has mock psql but no pg_dump
   local tmp_bin
   tmp_bin="$(mktemp -d)"
-  cp "${HELPERS_DIR}/psql" "${tmp_bin}/psql"
+  cp "${MOCKS_MIGRATE_DIR}/psql" "${tmp_bin}/psql"
   chmod +x "${tmp_bin}/psql"
   export PATH="${tmp_bin}:/usr/bin:/bin"
 
   run "${MIGRATE_SH}" snapshot
+  rm -rf "$tmp_bin"
   [ "$status" -eq 1 ]
   [[ "$output" == *"pg_dump is not installed"* ]]
-
-  rm -rf "$tmp_bin"
 }
 
 # ---- No tables --------------------------------------------------------------

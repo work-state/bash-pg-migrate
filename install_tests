@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+# =============================================================================
+# Test runner for install.sh
+#
+# Usage:
+#   ./install_tests               Run all install tests
+#   ./install_tests --tap         Run with TAP output (for CI)
+# =============================================================================
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+TESTS_DIR="${SCRIPT_DIR}/test"
+
+# ---- Colours ----------------------------------------------------------------
+
+RED='\033[0;31m'
+BLUE='\033[0;34m'
+NC='\033[0m'
+
+# ---- Locate bats ------------------------------------------------------------
+
+find_bats() {
+  if command -v bats &>/dev/null; then
+    echo "bats"
+    return
+  fi
+  echo ""
+}
+
+BATS=$(find_bats)
+
+if [[ -z "$BATS" ]]; then
+  echo -e "${RED}[ERROR]${NC} bats-core is not installed."
+  echo ""
+  echo "  Install it with one of:"
+  echo ""
+  echo "    # macOS"
+  echo "    brew install bats-core"
+  echo ""
+  echo "    # Debian / Ubuntu"
+  echo "    sudo apt-get install bats"
+  echo ""
+  echo "    # npm (any platform)"
+  echo "    npm install -g bats"
+  echo ""
+  exit 1
+fi
+
+# ---- Parse arguments --------------------------------------------------------
+
+BATS_ARGS=()
+
+for arg in "$@"; do
+  case "$arg" in
+    --tap)    BATS_ARGS+=("--formatter" "tap") ;;
+    --pretty) BATS_ARGS+=("--formatter" "pretty") ;;
+    -*)       BATS_ARGS+=("$arg") ;;
+  esac
+done
+
+# ---- Run --------------------------------------------------------------------
+
+echo -e "${BLUE}Running install tests in test/${NC}"
+echo ""
+exec "$BATS" ${BATS_ARGS[@]+"${BATS_ARGS[@]}"} "${TESTS_DIR}/install.bats"
