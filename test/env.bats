@@ -14,7 +14,7 @@ teardown() { teardown_test_env; }
   rm "${TEST_PROJECT_DIR}/.env"
   run "${MIGRATE_SH}" status
   [ "$status" -eq 1 ]
-  [[ "$output" == *".env file not found"* ]]
+  [[ "$output" == *"No .env file found"* ]]
 }
 
 # ---- Missing required variables ---------------------------------------------
