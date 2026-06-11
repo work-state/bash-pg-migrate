@@ -132,11 +132,13 @@ Then invoke it directly:
 
 ### After installing
 
-Copy the example environment file into your project and fill in your database credentials:
+If you don't already have an env file, copy the example and fill in your credentials:
 
 ```sh
-cp .env.example .env
+cp -n .env.example .env
 ```
+
+The `-n` flag prevents overwriting an existing file. If you already have a `.env`, `.env.local`, `.env.development`, or any other `.env.*` file, skip this step — pgmigrate will find it automatically. If your existing file uses different variable names (e.g. `PGHOST` instead of `DB_HOST`), see [Variable name mapping](#variable-name-mapping).
 
 Verify the connection:
 
@@ -150,7 +152,16 @@ pgmigrate status   # global install
 
 ## Configuration
 
-All database credentials and optional path overrides are read from a `.env` file in the same directory as `migrate.sh`. The `.env` file is never committed (it is listed in `.gitignore`).
+### Environment file
+
+pgmigrate reads credentials from an env file in the project root. It checks for the following filenames in order and uses the first one it finds:
+
+```
+.env          ← checked first
+.env.*        ← any suffix (.env.local, .env.development, .env.production, …)
+```
+
+If multiple `.env.*` files exist and no plain `.env` is present, pgmigrate picks the first one alphabetically and logs which file it used.
 
 **Required variables:**
 
@@ -175,12 +186,29 @@ DB_PASSWORD=secret
 # SCHEMAS_DIR=/absolute/path/to/schemas
 ```
 
-Copy `.env.example` to `.env` and adjust to match your environment. The script validates that all five required variables are present before connecting.
+The script validates that all five required variables are present before connecting.
 
 `DB_SCHEMA` controls three things at once:
 - The schema where the `_migrations` tracking table is created
 - The `search_path` used for every query, so unqualified table names in your migration SQL resolve to the right schema
 - The schema captured by the snapshot command
+
+### Variable name mapping
+
+If your env file uses different variable names — for example `PGHOST` and `PGDATABASE` instead of `DB_HOST` and `DB_NAME` — create a `.pgmigrate` file in the project root to tell pgmigrate which variables to read:
+
+```ini
+# .pgmigrate
+DB_HOST=PGHOST
+DB_PORT=PGPORT
+DB_NAME=PGDATABASE
+DB_USER=PGUSER
+DB_PASSWORD=PGPASSWORD
+```
+
+The left side is always pgmigrate's internal name; the right side is the variable name as it appears in your env file. pgmigrate loads your env file first, then applies the mappings — your file is never modified.
+
+The `.pgmigrate` file is safe to commit. It contains no credentials, only variable name mappings.
 
 ---
 
@@ -439,6 +467,7 @@ pgmigrate/
 ├── install.sh              # OS-aware installer
 ├── .env                    # Your local credentials (git-ignored)
 ├── .env.example            # Template to copy from
+├── .pgmigrate              # Optional — variable name mappings (safe to commit)
 ├── .gitignore
 │
 ├── bin/
@@ -446,8 +475,8 @@ pgmigrate/
 │
 ├── lib/
 │   └── helpers/
-│       ├── constants.sh    # Terminal color codes, ENV_FILE path
-│       ├── helpers.sh      # Logging, load_env, checksum, UP/DOWN extraction
+│       ├── constants.sh    # Terminal color codes
+│       ├── helpers.sh      # Logging, load_env, env mapping, checksum, UP/DOWN extraction
 │       ├── db.sh           # run_sql, check_connection, ensure_migrations_table
 │       └── snapshot.sh     # generate_schema_snapshot (pg_dump per table)
 │
@@ -506,7 +535,7 @@ npm install -g bats
 
 **`migrate_tests`** — `migrate.sh`
 
-`test/env.bats`, `test/connection.bats`, `test/up.bats`, `test/down.bats`, `test/status.bats`, `test/create.bats`, `test/snapshot.bats`
+`test/env.bats`, `test/mapping.bats`, `test/connection.bats`, `test/up.bats`, `test/down.bats`, `test/status.bats`, `test/create.bats`, `test/snapshot.bats`
 
 **`install_tests`** — `install.sh` and `bin/pgmigrate`
 
