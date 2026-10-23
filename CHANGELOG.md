@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-10-24
+
+### Added
+
+- `up N` applies only the next `N` pending migrations
+- `down N` rolls back the last `N` migrations, newest first
+- `N` must be a positive whole number; anything else prints a usage error
+- `up N` still verifies checksums of applied migrations after the limit
+- `down N` checks every file and `-- DOWN` section before rolling anything back
+- `N` larger than the pending or applied count applies or rolls back all of them
+- `status` numbers every migration in the order they apply
+- `status` pads numbers so file names stay aligned past 9 migrations
+- Tests for `up N`, `down N`, invalid counts and `status` numbering
+
+### Changed
+
+- `help` lists `up [N]` and `down [N]`
+- README documents `up N`, `down N` and numbered `status` output
+
+### Fixed
+
+- A failed `up` or `down` regenerates snapshots for the migrations already applied or rolled back
+- `up` and `down` print which migration failed
+
 ## [1.1.1] - 2026-10-24
 
 ### Fixed
@@ -100,7 +124,8 @@ First release.
 - Supports macOS, Linux and WSL
 - Bats test suite; MIT license
 
-[Unreleased]: https://github.com/work-state/bash-pg-migrate/compare/v1.1.1...HEAD
+[Unreleased]: https://github.com/work-state/bash-pg-migrate/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/work-state/bash-pg-migrate/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/work-state/bash-pg-migrate/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/work-state/bash-pg-migrate/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/work-state/bash-pg-migrate/compare/v1.0.0...v1.0.1
