@@ -34,6 +34,7 @@ source "${SCRIPT_DIR}/cmd/down/down.sh"
 source "${SCRIPT_DIR}/cmd/status/status.sh"
 source "${SCRIPT_DIR}/cmd/create/create.sh"
 source "${SCRIPT_DIR}/cmd/snapshot/snapshot.sh"
+source "${SCRIPT_DIR}/cmd/version/version.sh"
 
 # ---- Main -------------------------------------------------------------------
 
@@ -42,6 +43,7 @@ main() {
 
   case "$command" in
     help) cmd_help; return ;;
+    -v|--version) cmd_version; return ;;
     up|down|status|create|snapshot) ;;
     *)
       log_error "invalid command \"${command}\""

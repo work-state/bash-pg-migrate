@@ -81,5 +81,6 @@ else
     "${TESTS_DIR}/down.bats" \
     "${TESTS_DIR}/status.bats" \
     "${TESTS_DIR}/create.bats" \
-    "${TESTS_DIR}/snapshot.bats"
+    "${TESTS_DIR}/snapshot.bats" \
+    "${TESTS_DIR}/version.bats"
 fi

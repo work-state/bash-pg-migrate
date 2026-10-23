@@ -15,6 +15,7 @@ cmd_help() {
   echo "  ./migrate.sh status           Show migration status"
   echo "  ./migrate.sh create <name>    Create a new migration file"
   echo "  ./migrate.sh snapshot         Regenerate schema snapshots"
+  echo "  ./migrate.sh --version, -v    Show the installed version"
   echo ""
   echo "Configuration:"
   echo "  pgmigrate reads credentials from a .env file in the project root."

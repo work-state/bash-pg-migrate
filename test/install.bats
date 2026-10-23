@@ -308,3 +308,18 @@ teardown() { teardown_install_env; }
   [[ "$output" == *"Failed to remove"* ]]
   [[ "$output" != *"uninstalled"* ]]
 }
+
+# ---- Version ----------------------------------------------------------------
+
+@test "install: copies VERSION.md to LIB_DIR" {
+  run "${INSTALL_SH}" --prefix "${INSTALL_TEST_PREFIX}"
+  [ "$status" -eq 0 ]
+  [ -f "${INSTALL_TEST_PREFIX}/lib/pgmigrate/VERSION.md" ]
+}
+
+@test "launcher: --version prints the installed version" {
+  "${INSTALL_SH}" --prefix "${INSTALL_TEST_PREFIX}"
+  run "${INSTALL_TEST_PREFIX}/bin/pgmigrate" --version
+  [ "$status" -eq 0 ]
+  [[ "$output" == "pgmigrate "[0-9]*.[0-9]*.[0-9]* ]]
+}

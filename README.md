@@ -18,6 +18,7 @@ A lightweight, zero-dependency PostgreSQL migration runner written in pure Bash.
   - [create](#create)
   - [snapshot](#snapshot)
   - [help](#help)
+  - [version](#version)
 - [Schema Snapshots](#schema-snapshots)
 - [Checksum Protection](#checksum-protection)
 - [Directory Structure](#directory-structure)
@@ -418,7 +419,7 @@ Manually regenerates schema snapshots for all tables in the configured schema (e
 ./migrate.sh
 ```
 
-Prints a summary of all available commands. This is the only command that does not require a `.env` file to be present.
+Prints a summary of all available commands. Along with `--version`, this is one of only two commands that do not require a `.env` file to be present.
 
 ```
 PostgreSQL migration runner
@@ -432,6 +433,23 @@ General options:
   ./migrate.sh status           Show migration status
   ./migrate.sh create <name>    Create a new migration file
   ./migrate.sh snapshot         Regenerate schema snapshots
+  ./migrate.sh --version, -v    Show the installed version
+```
+
+---
+
+### version
+
+```sh
+./migrate.sh --version
+# or
+./migrate.sh -v
+```
+
+Prints the current release, read from the first row of the "Released versions" table in `VERSION.md`. The installer copies `VERSION.md` into `<prefix>/lib/pgmigrate/`, so `pgmigrate --version` reports the installed copy. Exits with `1` if `VERSION.md` is missing or has no version row.
+
+```
+pgmigrate 1.0.1
 ```
 
 ---
@@ -497,6 +515,8 @@ This prevents silent schema drift caused by editing a migration file after it ha
 pgmigrate/
 ├── migrate.sh              # Entry point — load libs, dispatch commands
 ├── install.sh              # OS-aware installer
+├── VERSION.md              # Release table — read by --version
+├── CHANGELOG.md            # Release notes
 ├── .env                    # Your local credentials (git-ignored)
 ├── .env.example            # Template to copy from
 ├── .pgmigrate              # Optional — variable name mappings (safe to commit)
@@ -523,8 +543,10 @@ pgmigrate/
 │   │   └── status.sh
 │   ├── create/             # cmd_create
 │   │   └── create.sh
-│   └── snapshot/           # cmd_snapshot
-│       └── snapshot.sh
+│   ├── snapshot/           # cmd_snapshot
+│   │   └── snapshot.sh
+│   └── version/            # cmd_version
+│       └── version.sh
 │
 ├── migrations/             # Your .sql migration files (git-ignored by default)
 │   └── .gitkeep
@@ -567,7 +589,7 @@ npm install -g bats
 
 **`migrate_tests`** — `migrate.sh`
 
-`test/env.bats`, `test/mapping.bats`, `test/connection.bats`, `test/up.bats`, `test/down.bats`, `test/status.bats`, `test/create.bats`, `test/snapshot.bats`
+`test/env.bats`, `test/mapping.bats`, `test/connection.bats`, `test/up.bats`, `test/down.bats`, `test/status.bats`, `test/create.bats`, `test/snapshot.bats`, `test/version.bats`
 
 **`install_tests`** — `install.sh` and `bin/pgmigrate`
 

@@ -204,8 +204,10 @@ copy_library() {
   mkdir -p "${LIB_DIR}/cmd/create"
   mkdir -p "${LIB_DIR}/cmd/snapshot"
   mkdir -p "${LIB_DIR}/cmd/help"
+  mkdir -p "${LIB_DIR}/cmd/version"
 
   cp "${REPO_DIR}/migrate.sh"                "${LIB_DIR}/migrate.sh"
+  cp "${REPO_DIR}/VERSION.md"                "${LIB_DIR}/VERSION.md"
   cp "${REPO_DIR}/lib/helpers/constants.sh"  "${LIB_DIR}/lib/helpers/constants.sh"
   cp "${REPO_DIR}/lib/helpers/helpers.sh"    "${LIB_DIR}/lib/helpers/helpers.sh"
   cp "${REPO_DIR}/lib/helpers/db.sh"         "${LIB_DIR}/lib/helpers/db.sh"
@@ -216,6 +218,7 @@ copy_library() {
   cp "${REPO_DIR}/cmd/status/status.sh"      "${LIB_DIR}/cmd/status/status.sh"
   cp "${REPO_DIR}/cmd/create/create.sh"      "${LIB_DIR}/cmd/create/create.sh"
   cp "${REPO_DIR}/cmd/snapshot/snapshot.sh"  "${LIB_DIR}/cmd/snapshot/snapshot.sh"
+  cp "${REPO_DIR}/cmd/version/version.sh"    "${LIB_DIR}/cmd/version/version.sh"
 
   chmod +x "${LIB_DIR}/migrate.sh"
 
