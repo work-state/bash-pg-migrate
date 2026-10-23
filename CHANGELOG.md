@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-10-24
+
+### Added
+
+- `--version` and `-v` print the current version, e.g. `pgmigrate 1.1.0`
+- The version is read from the first row of the "Released versions" table in `VERSION.md`
+- `--version` works without a `.env` file
+- `--version` exits with `1` when `VERSION.md` is missing or has no version row
+- `install.sh` copies `VERSION.md` and `cmd/version/` into `<prefix>/lib/pgmigrate/`
+- `help` lists the `--version, -v` option
+- Version tests in `test/version.bats`, run by `migrate_tests`
+- Install test: `VERSION.md` is copied to `LIB_DIR`
+- Launcher test: `pgmigrate --version` prints the installed version
+
+### Changed
+
+- README documents the `version` command
+- README adds `VERSION.md`, `CHANGELOG.md` and `cmd/version/` to the directory structure
+- README lists `test/version.bats` in the test suites
+
 ## [1.0.1] - 2026-10-23
 
 ### Fixed
@@ -44,6 +64,7 @@ First release.
 - Supports macOS, Linux and WSL
 - Bats test suite; MIT license
 
-[Unreleased]: https://github.com/work-state/bash-pg-migrate/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/work-state/bash-pg-migrate/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/work-state/bash-pg-migrate/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/work-state/bash-pg-migrate/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/work-state/bash-pg-migrate/releases/tag/v1.0.0
