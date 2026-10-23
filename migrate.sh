@@ -55,8 +55,8 @@ main() {
   load_env
 
   case "$command" in
-    up)       cmd_up ;;
-    down)     cmd_down ;;
+    up)       cmd_up "$@" ;;
+    down)     cmd_down "$@" ;;
     status)   cmd_status ;;
     create)   cmd_create "$@" ;;
     snapshot) cmd_snapshot ;;

@@ -58,3 +58,28 @@ teardown() { teardown_test_env; }
   [ "$status" -eq 0 ]
   [[ "$output" == *"Migration Status"* ]]
 }
+
+# ---- Numbering --------------------------------------------------------------
+
+@test "status: numbers every migration line in order" {
+  create_migration "20240101000000_create_users"
+  create_migration "20240102000000_create_orders"
+  create_migration "20240103000000_create_products"
+  export MOCK_APPLIED_MIGRATIONS="20240101000000_create_users.sql"
+  run "${MIGRATE_SH}" status
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"1. "*"20240101000000_create_users.sql"* ]]
+  [[ "$output" == *"2. "*"20240102000000_create_orders.sql"*"(pending)"* ]]
+  [[ "$output" == *"3. "*"20240103000000_create_products.sql"*"(pending)"* ]]
+}
+
+@test "status: pads numbers so file names stay aligned past 9 migrations" {
+  local i
+  for i in $(seq 1 10); do
+    create_migration "202401010000$(printf '%02d' "$i")_m${i}"
+  done
+  run "${MIGRATE_SH}" status
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"   1. "*"20240101000001_m1.sql"* ]]
+  [[ "$output" == *"  10. "*"20240101000010_m10.sql"* ]]
+}

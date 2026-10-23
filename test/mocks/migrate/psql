@@ -147,8 +147,15 @@ fi
 
 # ---- Last applied migration -------------------------------------------------
 
+# MOCK_LAST_MIGRATION wins; otherwise the newest MOCK_APPLIED_MIGRATIONS up to LIMIT
 if echo "$sql" | grep -q "SELECT filename FROM _migrations ORDER BY"; then
-  echo "${MOCK_LAST_MIGRATION:-}"
+  if [[ -n "${MOCK_LAST_MIGRATION:-}" ]]; then
+    echo "${MOCK_LAST_MIGRATION}"
+  else
+    limit=$(echo "$sql" | grep -oE "LIMIT [0-9]+" | grep -oE "[0-9]+")
+    for applied in ${MOCK_APPLIED_MIGRATIONS:-}; do echo "$applied"; done \
+      | sort -r | head -n "${limit:-1}"
+  fi
   exit 0
 fi
 

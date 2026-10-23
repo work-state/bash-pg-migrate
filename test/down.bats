@@ -74,3 +74,79 @@ EOF
   run "${MIGRATE_SH}" down
   [ "$status" -eq 1 ]
 }
+
+# ---- Step count: down N -----------------------------------------------------
+
+@test "down: N rolls back the last N migrations, newest first" {
+  create_migration "20240101000000_create_users"
+  create_migration "20240102000000_create_orders"
+  create_migration "20240103000000_create_products"
+  export MOCK_APPLIED_MIGRATIONS="20240101000000_create_users.sql 20240102000000_create_orders.sql 20240103000000_create_products.sql"
+  run "${MIGRATE_SH}" down 2
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Rolled back: 20240103000000_create_products.sql"*"Rolled back: 20240102000000_create_orders.sql"* ]]
+  [[ "$output" != *"20240101000000_create_users.sql"* ]]
+  [[ "$output" == *"Rolled back 2 migration(s)."* ]]
+}
+
+@test "down: without N rolls back only the last migration" {
+  create_migration "20240101000000_create_users"
+  create_migration "20240102000000_create_orders"
+  export MOCK_APPLIED_MIGRATIONS="20240101000000_create_users.sql 20240102000000_create_orders.sql"
+  run "${MIGRATE_SH}" down
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Rolled back: 20240102000000_create_orders.sql"* ]]
+  [[ "$output" != *"20240101000000_create_users.sql"* ]]
+}
+
+@test "down: N larger than the applied count rolls back all of them" {
+  create_migration "20240101000000_create_users"
+  create_migration "20240102000000_create_orders"
+  export MOCK_APPLIED_MIGRATIONS="20240101000000_create_users.sql 20240102000000_create_orders.sql"
+  run "${MIGRATE_SH}" down 5
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Only 2 migration(s) were applied"* ]]
+  [[ "$output" == *"Rolled back 2 migration(s)."* ]]
+}
+
+@test "down: N with a missing file rolls back nothing" {
+  create_migration "20240101000000_create_users"
+  export MOCK_APPLIED_MIGRATIONS="20240101000000_create_users.sql 20240102000000_missing.sql"
+  run "${MIGRATE_SH}" down 2
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"Migration file not found"*"20240102000000_missing.sql"* ]]
+  [[ "$output" != *"Rolling back"* ]]
+}
+
+@test "down: N with a missing DOWN section rolls back nothing" {
+  create_migration "20240101000000_create_users"
+  cat > "${TEST_PROJECT_DIR}/migrations/20240102000000_bad.sql" <<'SQL'
+-- UP
+CREATE TABLE bad (id SERIAL PRIMARY KEY);
+SQL
+  export MOCK_APPLIED_MIGRATIONS="20240101000000_create_users.sql 20240102000000_bad.sql"
+  run "${MIGRATE_SH}" down 2
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"No -- DOWN section found in 20240102000000_bad.sql"* ]]
+  [[ "$output" != *"Rolling back"* ]]
+}
+
+@test "down: rejects a step count that is not a positive whole number" {
+  local count
+  for count in 0 -1 abc 1.5; do
+    run "${MIGRATE_SH}" down "$count"
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Usage: ./migrate.sh down [N]"* ]]
+  done
+}
+
+# ---- Failure reporting ------------------------------------------------------
+
+@test "down: SQL failure prints which rollback failed" {
+  create_migration "20240101000000_create_users"
+  export MOCK_LAST_MIGRATION="20240101000000_create_users.sql"
+  export MOCK_SQL_EXEC_FAIL=1
+  run "${MIGRATE_SH}" down
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"Rollback failed: 20240101000000_create_users.sql"* ]]
+}

@@ -291,16 +291,20 @@ pgmigrate up      # global install
 ### up
 
 ```sh
-./migrate.sh up
+./migrate.sh up       # apply all pending migrations
+./migrate.sh up 1     # apply only the next pending migration
+./migrate.sh up 3     # apply the next 3 pending migrations
 ```
 
-Applies all pending migrations in filename order (ascending). For each file:
+Applies pending migrations in filename order (ascending): all of them, or only the next `N` when a count is given. `N` must be a positive whole number; if it is larger than the number of pending migrations, all of them are applied. For each file:
 
 1. Checks whether the migration is already recorded in `_migrations`.
 2. If already applied, verifies the stored checksum matches the file — aborts if it does not.
 3. If pending, extracts the UP block, wraps it in `BEGIN/COMMIT`, runs it against the database, and records the filename + checksum in `_migrations`.
 
-After all pending migrations are applied, schema snapshots are regenerated automatically.
+With a count, step 2 still runs for every applied file, so a modified migration is caught even after the last one `up N` applies.
+
+After the migrations are applied, schema snapshots are regenerated automatically. If a migration fails, `up` stops there: the migrations applied before it stay applied, and the snapshot is regenerated for them.
 
 **Example output:**
 
@@ -326,12 +330,15 @@ If there is nothing to apply:
 ### down
 
 ```sh
-./migrate.sh down
+./migrate.sh down     # roll back the last applied migration
+./migrate.sh down 3   # roll back the last 3, newest first
 ```
 
-Rolls back the **last applied** migration (determined by descending filename order from `_migrations`). The DOWN block is extracted from the migration file, wrapped in `BEGIN/COMMIT`, and executed. The record is removed from `_migrations` on success.
+Rolls back the **last applied** migration, or the last `N` when a count is given (determined by descending filename order from `_migrations`). For each one, the DOWN block is extracted from the migration file, wrapped in `BEGIN/COMMIT`, and executed. The record is removed from `_migrations` on success.
 
-Schema snapshots are regenerated after a successful rollback.
+Before rolling anything back, `down N` checks that every one of the `N` files exists and has a `-- DOWN` section, so a missing file can't stop it halfway. If `N` is larger than the number of applied migrations, all of them are rolled back.
+
+Schema snapshots are regenerated after the rollback. If a rollback fails, `down` stops there: the rollbacks before it stay done, and the snapshot is regenerated for them.
 
 **Example output:**
 
@@ -342,7 +349,7 @@ Schema snapshots are regenerated after a successful rollback.
 [OK]    Rolled back: 20240102090000_add_avatar_to_users.sql
 ```
 
-> `down` rolls back one migration at a time. Run it repeatedly to go further back.
+> Without a count, `up` applies everything pending while `down` undoes only one migration. That's deliberate: rolling back usually drops tables or columns, so going back several steps has to be asked for explicitly.
 
 ---
 
@@ -352,15 +359,15 @@ Schema snapshots are regenerated after a successful rollback.
 ./migrate.sh status
 ```
 
-Prints every `.sql` file found in `MIGRATIONS_DIR` alongside its current state.
+Prints every `.sql` file found in `MIGRATIONS_DIR`, numbered in the order they apply, alongside its current state.
 
 ```
 Migration Status
 ================
 
-  ✓  20240101120000_create_users_table.sql
-  ✓  20240102090000_add_avatar_to_users.sql
-  ○  20240103150000_create_posts_table.sql  (pending)
+  1. ✓  20240101120000_create_users_table.sql
+  2. ✓  20240102090000_add_avatar_to_users.sql
+  3. ○  20240103150000_create_posts_table.sql  (pending)
 ```
 
 - `✓` (green) — migration has been applied.
@@ -429,8 +436,8 @@ Usage:
   ./migrate.sh [OPTION]...
 
 General options:
-  ./migrate.sh up               Apply all pending migrations
-  ./migrate.sh down             Rollback last migration
+  ./migrate.sh up [N]           Apply all pending migrations, or only the next N
+  ./migrate.sh down [N]         Rollback the last migration, or the last N
   ./migrate.sh status           Show migration status
   ./migrate.sh create <name>    Create a new migration file
   ./migrate.sh snapshot         Regenerate schema snapshots

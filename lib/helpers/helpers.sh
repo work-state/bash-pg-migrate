@@ -162,3 +162,19 @@ extract_down() {
   local file="$1"
   sed -n '/^-- DOWN[[:space:]]*$/,$ { /^-- DOWN[[:space:]]*$/d; p; }' "$file"
 }
+
+# ---- Command Arguments ------------------------------------------------------
+
+# Validate the optional step count of up/down — prints it, or nothing when omitted
+# Usage: parse_step_count <command> [count] [extra...]
+parse_step_count() {
+  local command="$1" count="${2:-}"
+
+  if [[ $# -gt 2 || ( -n "$count" && ! "$count" =~ ^[1-9][0-9]*$ ) ]]; then
+    log_error "Usage: ./migrate.sh ${command} [N]" >&2
+    log_info  "N must be a positive whole number, e.g. ./migrate.sh ${command} 1" >&2
+    exit 1
+  fi
+
+  echo "$count"
+}

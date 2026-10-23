@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Command: up — apply all pending migrations
+# Command: up — apply all pending migrations, or only the next N
 # =============================================================================
 
 cmd_up() {
+  local limit
+  limit=$(parse_step_count "up" "${@:2}") || exit 1
+
   ensure_database
   check_connection
   ensure_migrations_table
@@ -46,11 +49,17 @@ cmd_up() {
       continue
     fi
 
+    # Keep scanning past the limit so applied migrations still get their checksum verified
+    if [[ -n "$limit" && $pending -ge $limit ]]; then
+      continue
+    fi
+
     local up_sql
     up_sql=$(extract_up "$file")
 
     if [[ -z "$up_sql" ]]; then
       log_error "No -- UP section found in ${filename}"
+      [[ $pending -gt 0 ]] && generate_schema_snapshot
       exit 1
     fi
 
@@ -59,7 +68,7 @@ cmd_up() {
 
     log_info "Applying: ${filename}"
 
-    run_sql <<SQL
+    if run_sql <<SQL
 BEGIN;
 
 ${up_sql}
@@ -68,12 +77,13 @@ INSERT INTO _migrations (filename, checksum) VALUES ('${filename}', '${checksum}
 
 COMMIT;
 SQL
-
-    if [[ $? -eq 0 ]]; then
+    then
       log_success "Applied: ${filename}"
       pending=$((pending + 1))
     else
       log_error "Failed: ${filename}"
+      # Migrations applied before this one are committed — keep schemas/ in sync
+      [[ $pending -gt 0 ]] && generate_schema_snapshot
       exit 1
     fi
   done < <(printf '%s\n' "${MIGRATIONS_DIR}"/*.sql | sort)

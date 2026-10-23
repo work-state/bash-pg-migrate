@@ -13,8 +13,21 @@ cmd_status() {
   echo "================"
   echo ""
 
-  for file in "${MIGRATIONS_DIR}"/*.sql; do
-    [[ -e "$file" ]] || { echo "  No migration files found."; break; }
+  local files=("${MIGRATIONS_DIR}"/*.sql)
+
+  if [[ ! -e "${files[0]}" ]]; then
+    echo "  No migration files found."
+    echo ""
+    return
+  fi
+
+  # Pad numbers to the widest one so file names stay aligned
+  local width=${#files[@]}
+  width=${#width}
+  local index=0
+
+  for file in "${files[@]}"; do
+    index=$((index + 1))
 
     local filename
     filename=$(basename "$file")
@@ -24,9 +37,9 @@ cmd_status() {
       "SELECT 1 FROM _migrations WHERE filename = '${filename}';" 2>/dev/null || echo "")
 
     if [[ "$applied" == "1" ]]; then
-      echo -e "  ${GREEN}✓${NC}  ${filename}"
+      printf "  %${width}d. %b  %s\n" "$index" "${GREEN}✓${NC}" "$filename"
     else
-      echo -e "  ${YELLOW}○${NC}  ${filename}  (pending)"
+      printf "  %${width}d. %b  %s  (pending)\n" "$index" "${YELLOW}○${NC}" "$filename"
     fi
   done
 
