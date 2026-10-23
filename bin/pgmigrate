@@ -15,11 +15,30 @@ BIN_FILE="${BASH_SOURCE[0]}"
 
 if [[ "${1:-}" == "uninstall" ]]; then
   echo "Uninstalling pgmigrate..."
+
+  # Check every target up front so a permission error never leaves a
+  # half-removed install behind
+  for target in "${LIB_DIR}" "${BIN_FILE}" "$(dirname "${BIN_FILE}")"; do
+    if [[ -e "${target}" && ! -w "${target}" ]]; then
+      echo "[ERROR] No write permission to ${target}" >&2
+      echo "[INFO]  Re-run with elevated privileges: sudo pgmigrate uninstall" >&2
+      exit 1
+    fi
+  done
+
   if [[ -n "${LIB_DIR}" && -d "${LIB_DIR}" ]]; then
-    rm -rf "${LIB_DIR}" && echo "[OK]  Removed ${LIB_DIR}"
+    if ! rm -rf "${LIB_DIR}"; then
+      echo "[ERROR] Failed to remove ${LIB_DIR}" >&2
+      exit 1
+    fi
+    echo "[OK]  Removed ${LIB_DIR}"
   fi
   if [[ -n "${BIN_FILE}" && -f "${BIN_FILE}" ]]; then
-    rm -f "${BIN_FILE}" && echo "[OK]  Removed ${BIN_FILE}"
+    if ! rm -f "${BIN_FILE}"; then
+      echo "[ERROR] Failed to remove ${BIN_FILE}" >&2
+      exit 1
+    fi
+    echo "[OK]  Removed ${BIN_FILE}"
   fi
   echo "[OK]  pgmigrate uninstalled."
   exit 0

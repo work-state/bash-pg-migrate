@@ -266,3 +266,45 @@ teardown() { teardown_install_env; }
   [ "$status" -eq 0 ]
   [[ "$output" == *"uninstalled"* ]]
 }
+
+@test "launcher: uninstall with unwritable LIB_DIR exits with error" {
+  "${INSTALL_SH}" --prefix "${INSTALL_TEST_PREFIX}"
+  chmod 555 "${INSTALL_TEST_PREFIX}/lib/pgmigrate"
+  run "${INSTALL_TEST_PREFIX}/bin/pgmigrate" uninstall
+  chmod 755 "${INSTALL_TEST_PREFIX}/lib/pgmigrate"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"No write permission"* ]]
+  [[ "$output" != *"uninstalled"* ]]
+}
+
+@test "launcher: uninstall with unwritable LIB_DIR removes nothing" {
+  "${INSTALL_SH}" --prefix "${INSTALL_TEST_PREFIX}"
+  chmod 555 "${INSTALL_TEST_PREFIX}/lib/pgmigrate"
+  run "${INSTALL_TEST_PREFIX}/bin/pgmigrate" uninstall
+  chmod 755 "${INSTALL_TEST_PREFIX}/lib/pgmigrate"
+  [ "$status" -eq 1 ]
+  [ -f "${INSTALL_TEST_PREFIX}/lib/pgmigrate/migrate.sh" ]
+  [ -f "${INSTALL_TEST_PREFIX}/bin/pgmigrate" ]
+}
+
+@test "launcher: uninstall with unwritable bin directory exits with error" {
+  "${INSTALL_SH}" --prefix "${INSTALL_TEST_PREFIX}"
+  chmod 555 "${INSTALL_TEST_PREFIX}/bin"
+  run "${INSTALL_TEST_PREFIX}/bin/pgmigrate" uninstall
+  chmod 755 "${INSTALL_TEST_PREFIX}/bin"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"No write permission"* ]]
+  [[ "$output" == *"sudo pgmigrate uninstall"* ]]
+  [ -d "${INSTALL_TEST_PREFIX}/lib/pgmigrate" ]
+}
+
+@test "launcher: uninstall exits with error when removal fails" {
+  "${INSTALL_SH}" --prefix "${INSTALL_TEST_PREFIX}"
+  # LIB_DIR itself is writable, but a read-only subdirectory makes rm -rf fail
+  chmod 555 "${INSTALL_TEST_PREFIX}/lib/pgmigrate/cmd/up"
+  run "${INSTALL_TEST_PREFIX}/bin/pgmigrate" uninstall
+  chmod 755 "${INSTALL_TEST_PREFIX}/lib/pgmigrate/cmd/up"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"Failed to remove"* ]]
+  [[ "$output" != *"uninstalled"* ]]
+}

@@ -110,6 +110,19 @@ pgmigrate uninstall
 
 No need to keep the cloned repo around — the launcher handles its own removal.
 
+The launcher checks write permissions before removing anything. If it lacks them, it exits with an error and leaves the install untouched. If you installed into a root-owned prefix (such as the default `/usr/local`), run it with the same privileges you installed with:
+
+```sh
+sudo pgmigrate uninstall
+```
+
+Alternatively, uninstall from the cloned repo with the installer:
+
+```sh
+./install.sh --uninstall                    # default prefix
+./install.sh --uninstall --prefix ~/.local  # custom prefix
+```
+
 ---
 
 ### Local (project-scoped) install
@@ -132,10 +145,22 @@ Then invoke it directly:
 
 ### After installing
 
-If you don't already have an env file, copy the example and fill in your credentials:
+pgmigrate operates on the directory you run it from (the project root), so run it from your project's directory. To target another directory without `cd`, set `PGMIGRATE_PROJECT_DIR`:
+
+```sh
+PGMIGRATE_PROJECT_DIR=/path/to/project pgmigrate status
+```
+
+If you don't already have an env file, create one in your project root and fill in your credentials. With a local install, copy the example:
 
 ```sh
 cp -n .env.example .env
+```
+
+With a global install, `.env.example` stays in the cloned repo and is not copied into your project. Copy it from there, or create `.env` by hand with the [required variables](#environment-file):
+
+```sh
+cp -n /path/to/bash-pg-migrate/.env.example .env
 ```
 
 The `-n` flag prevents overwriting an existing file. If you already have a `.env`, `.env.local`, `.env.development`, or any other `.env.*` file, skip this step — pgmigrate will find it automatically. If your existing file uses different variable names (e.g. `PGHOST` instead of `DB_HOST`), see [Variable name mapping](#variable-name-mapping).
@@ -154,7 +179,7 @@ pgmigrate status   # global install
 
 ### Environment file
 
-pgmigrate reads credentials from an env file in the project root. It checks for the following filenames in order and uses the first one it finds:
+pgmigrate reads credentials from an env file in the project root. The project root is the current working directory, or `PGMIGRATE_PROJECT_DIR` if it is set. It checks for the following filenames in order and uses the first one it finds:
 
 ```
 .env          ← checked first
@@ -253,6 +278,13 @@ Use `./migrate.sh create <name>` to scaffold a correctly-named file automaticall
 ---
 
 ## Commands
+
+Examples below use `./migrate.sh` (local install). With a global install, replace `./migrate.sh` with `pgmigrate`. Both take the same commands and arguments:
+
+```sh
+./migrate.sh up   # local install
+pgmigrate up      # global install
+```
 
 ### up
 
