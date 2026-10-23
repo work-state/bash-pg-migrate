@@ -5,6 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] - 2026-10-24
+
+### Fixed
+
+- Snapshots now cover every schema-level object, not only tables
+- One file per view and materialized view
+- Table files include triggers, rules, policies, extended statistics and comments
+- `_extensions.sql` lists every installed extension except `plpgsql`
+- `_types.sql` holds enums, composite types, range types and domains
+- `_sequences.sql` holds standalone sequences; owned sequences stay in their table's file
+- `_functions.sql` holds functions, procedures and aggregates
+- `_collations.sql` holds custom collations
+- `_text_search.sql` holds text search configurations, dictionaries, parsers and templates
+- Files of dropped or renamed tables and views are removed
+- `_*.sql` files are removed when the last object of that kind is dropped
+- Only files with pgmigrate's own header are removed; other files in `schemas/` are kept
+- A failed table listing warns and removes nothing
+- A failed `pg_dump` warns that object files were not updated
+- SQL inside function and view bodies is no longer stripped from snapshots
+- Foreign tables are skipped with a warning instead of silently
+- `migrate_tests` runs `test/mapping.bats`
+
+### Added
+
+- `pg_restore` dependency, checked by `install.sh` and `snapshot`
+- `install.sh` prints the `pg_restore` version and warns when it is missing
+- `pg_restore` mocks for the migrate and install tests
+- Snapshot tests for views, object files, stale file removal and failures
+- Install test: missing `pg_restore` shows a warning
+
+### Changed
+
+- README lists `pg_restore` in the prerequisites and dependencies
+- README documents every snapshot file and what is not snapshotted
+- README explains how dropped objects are removed from `schemas/`
+
 ## [1.1.0] - 2026-10-24
 
 ### Added
@@ -64,7 +100,8 @@ First release.
 - Supports macOS, Linux and WSL
 - Bats test suite; MIT license
 
-[Unreleased]: https://github.com/work-state/bash-pg-migrate/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/work-state/bash-pg-migrate/compare/v1.1.1...HEAD
+[1.1.1]: https://github.com/work-state/bash-pg-migrate/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/work-state/bash-pg-migrate/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/work-state/bash-pg-migrate/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/work-state/bash-pg-migrate/releases/tag/v1.0.0
