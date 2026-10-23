@@ -1,0 +1,92 @@
+#!/usr/bin/env bash
+# =============================================================================
+# Mock pg_restore — replaces the real pg_restore binary during tests.
+# Behaviour is controlled via environment variables:
+#
+#   MOCK_OBJECTS="TYPE:order_status FUNCTION:f()"  schema-level objects in the
+#                       archive, as KIND:name. Use _ for spaces in the kind
+#                       (TEXT_SEARCH_CONFIGURATION:en_simple).
+#   MOCK_COMMENTS="TYPE:order_status"  objects that also carry a COMMENT
+#
+#   pg_restore -l <archive>              print the table of contents
+#   pg_restore -L <list> -f - <archive>  print DDL for the listed entries
+# =============================================================================
+
+list=""
+toc=false
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -l) toc=true; shift ;;
+    -L) list="$2"; shift 2 ;;
+    *)  shift ;;
+  esac
+done
+
+# ---- Table of contents ------------------------------------------------------
+# Always includes entries that must never land in an object file
+
+if [[ "$toc" == "true" ]]; then
+  echo ";"
+  echo "; Archive created at 2026-01-01 00:00:00 UTC"
+  echo ";"
+  echo "7; 2615 2200 SCHEMA - public pg_database_owner"
+  echo "220; 1259 16390 TABLE public users postgres"
+  echo "221; 1259 16389 SEQUENCE public users_id_seq postgres"
+  echo "4370; 0 0 SEQUENCE OWNED BY public users_id_seq postgres"
+  echo "4371; 0 0 COMMENT public TABLE users postgres"
+  id=1000
+  for object in ${MOCK_OBJECTS:-}; do
+    kind="${object%%:*}"
+    echo "${id}; 1247 $((id + 16000)) ${kind//_/ } public ${object#*:} postgres"
+    id=$((id + 1))
+  done
+  for object in ${MOCK_COMMENTS:-}; do
+    kind="${object%%:*}"
+    echo "${id}; 0 0 COMMENT public ${kind//_/ } ${object#*:} postgres"
+    id=$((id + 1))
+  done
+  exit 0
+fi
+
+# ---- DDL for the listed entries ---------------------------------------------
+# Emits the same noise as real pg_restore so the snapshot filter is exercised
+
+echo "--"
+echo "-- PostgreSQL database dump"
+echo "--"
+echo "SET statement_timeout = 0;"
+echo "SELECT pg_catalog.set_config('search_path', '', false);"
+
+while IFS= read -r line; do
+  [[ "$line" == \;* || -z "$line" ]] && continue
+  rest=$(echo "$line" | sed -E 's/^[0-9]+; [0-9]+ [0-9]+ //')
+
+  if [[ "$rest" == "COMMENT public "* ]]; then
+    rest="${rest#COMMENT public }"
+    target="${rest% *}"
+    echo "COMMENT ON ${target% *} public.${target##* } IS 'mock comment';"
+    continue
+  fi
+
+  kind="${rest%% public *}"
+  name="${rest#* public }"
+  name="${name% *}"
+
+  echo "-- Name: ${name}; Type: ${kind}; Schema: public; Owner: -"
+  case "$kind" in
+    FUNCTION|PROCEDURE)
+      # Body lines that look like pg_dump noise must survive the filter
+      echo "CREATE ${kind} public.${name} RETURNS integer"
+      echo "    LANGUAGE sql"
+      echo "    AS \$\$"
+      echo "-- keep this body comment"
+      echo "SELECT 1"
+      echo "\$\$;"
+      ;;
+    *)
+      echo "CREATE ${kind} public.${name};"
+      ;;
+  esac
+done < "$list"
+
+exit 0

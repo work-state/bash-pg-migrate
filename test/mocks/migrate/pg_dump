@@ -4,6 +4,9 @@
 # Behaviour is controlled via environment variables:
 #
 #   MOCK_PG_DUMP_FAIL=1   fail on every call
+#
+# With --format=custom it writes a placeholder archive to the -f path; the
+# mock pg_restore builds its table of contents from MOCK_OBJECTS instead.
 # =============================================================================
 
 if [[ "${MOCK_PG_DUMP_FAIL:-0}" == "1" ]]; then
@@ -13,12 +16,21 @@ fi
 
 # Parse -t flag to determine the table being dumped
 table="test_table"
+format=""
+output=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -t) table="$2"; shift 2 ;;
+    -f) output="$2"; shift 2 ;;
+    --format=*) format="${1#--format=}"; shift ;;
     *)  shift ;;
   esac
 done
+
+if [[ "$format" == "custom" ]]; then
+  echo "PGDMP mock archive" > "$output"
+  exit 0
+fi
 
 # Strip schema prefix for constraint naming
 table_short="${table##*.}"

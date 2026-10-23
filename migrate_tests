@@ -76,6 +76,7 @@ else
   echo ""
   exec "$BATS" ${BATS_ARGS[@]+"${BATS_ARGS[@]}"} \
     "${TESTS_DIR}/env.bats" \
+    "${TESTS_DIR}/mapping.bats" \
     "${TESTS_DIR}/connection.bats" \
     "${TESTS_DIR}/up.bats" \
     "${TESTS_DIR}/down.bats" \

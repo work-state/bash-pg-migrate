@@ -1,6 +1,6 @@
 # pgmigrate
 
-A lightweight, zero-dependency PostgreSQL migration runner written in pure Bash. It manages schema changes through plain SQL files, tracks applied migrations in the database itself, and snapshots your live schema after every change — no Node, Python, or Docker required.
+A lightweight PostgreSQL migration runner written in pure Bash. It manages schema changes through plain SQL files, tracks applied migrations in the database itself, and snapshots your live schema after every change. It needs only Bash and the standard PostgreSQL client tools (`psql`, `pg_dump`, `pg_restore`) — no Node, Python, or Docker required.
 
 ---
 
@@ -33,8 +33,8 @@ A lightweight, zero-dependency PostgreSQL migration runner written in pure Bash.
 
 - **Ordered, atomic migrations** — each migration runs inside a `BEGIN/COMMIT` block; if any statement fails the whole migration rolls back.
 - **Tamper detection** — a SHA-256 checksum of every applied migration's UP block is stored in the database; re-running `up` will abort if a file was modified after it was applied.
-- **Schema snapshots** — after every `up` or `down` run, the live schema of each table in the configured schema (`DB_SCHEMA`, defaults to `public`) is dumped via `pg_dump` into a `schemas/` directory, giving you an always-up-to-date reference.
-- **No external runtime** — the only dependencies are `psql`, `pg_dump`, and standard POSIX utilities (`sed`, `awk`, `sha256sum`/`shasum`).
+- **Schema snapshots** — after every `up` or `down` run, the live schema of the configured schema (`DB_SCHEMA`, defaults to `public`) is dumped via `pg_dump` into a `schemas/` directory: one file per table and view, plus files for extensions, types, sequences, functions, collations and text search objects. This gives you an always-up-to-date reference.
+- **No external runtime** — beyond Bash, the only dependencies are the PostgreSQL client tools (`psql`, `pg_dump`, `pg_restore`, all installed together) and standard POSIX utilities (`sed`, `awk`, `sha256sum`/`shasum`).
 
 ---
 
@@ -45,9 +45,10 @@ A lightweight, zero-dependency PostgreSQL migration runner written in pure Bash.
 | `bash`        | Script runtime                   | 4.0+            |
 | `psql`        | Run SQL against PostgreSQL       | any             |
 | `pg_dump`     | Generate schema snapshots        | any             |
+| `pg_restore`  | Split snapshots by object type   | any             |
 | `sha256sum` or `shasum` | Compute migration checksums | any        |
 
-On macOS, `psql` and `pg_dump` are included with a standard PostgreSQL installation:
+On macOS, `psql`, `pg_dump` and `pg_restore` are included with a standard PostgreSQL installation:
 
 ```sh
 brew install postgresql
@@ -84,7 +85,7 @@ cd bash-pg-migrate
 
 The installer will:
 - Detect your operating system and run the appropriate setup
-- Print your Bash version, `psql` version, and `pg_dump` version
+- Print your Bash version, `psql` version, `pg_dump` version, and `pg_restore` version
 - Show exactly where files are being installed
 - Warn about any missing dependencies with OS-specific install instructions
 - Warn if the install bin directory is not in your `PATH`
@@ -400,7 +401,7 @@ Open the file, fill in your SQL, and run `./migrate.sh up`.
 ./migrate.sh snapshot
 ```
 
-Manually regenerates schema snapshots for all tables in the configured schema (excluding the internal `_migrations` table) without running any migrations. Useful when you want to refresh `schemas/` after making changes directly in the database during development.
+Manually regenerates all schema snapshots for the configured schema (excluding the internal `_migrations` table) without running any migrations. See [Schema Snapshots](#schema-snapshots) for the files it writes. Useful when you want to refresh `schemas/` after making changes directly in the database during development.
 
 ```
 [INFO]  Generating schema snapshots...
@@ -456,13 +457,37 @@ pgmigrate 1.0.1
 
 ## Schema Snapshots
 
-After every `up` and `down` run, `pgmigrate` generates one snapshot file per table under `schemas/`. Each file:
+After every `up` and `down` run, `pgmigrate` regenerates the snapshot files under `schemas/`:
+
+| File | Contents |
+|---|---|
+| `<table>.sql` | One per table and partitioned table: columns, owned sequences (`serial`, identity), indexes, constraints, triggers, rules, row-level security policies, extended statistics, comments and outgoing foreign keys |
+| `<view>.sql` | One per view and materialized view: the view definition, plus indexes and extended statistics for materialized views |
+| `_extensions.sql` | Every extension installed in the database (except the built-in `plpgsql`), with the schema it lives in |
+| `_types.sql` | Enums, composite types, range types and domains |
+| `_sequences.sql` | Standalone sequences — sequences owned by a column are in that table's file |
+| `_functions.sql` | Functions (including trigger functions), procedures and aggregates |
+| `_collations.sql` | Custom collations |
+| `_text_search.sql` | Text search configurations, dictionaries, parsers and templates |
+
+Each file:
 
 - Is a **read-only reference** — it should never be executed directly.
-- Captures that table's columns, sequences, indexes, constraints, and outgoing foreign key references.
-- Can be committed to version control — each table has its own file, so a migration touching `orders` only modifies `schemas/orders.sql`, keeping diffs isolated and avoiding merge conflicts in team workflows.
+- Can be committed to version control — each table and view has its own file, so a migration touching `orders` only modifies `schemas/orders.sql`, keeping diffs isolated and avoiding merge conflicts in team workflows.
+
+Every run compares the files with the live database, so the snapshot never describes objects that no longer exist:
+
+- A table or view that still exists has its file rewritten. Rolling back an `ALTER TABLE` removes the reverted column, index or constraint from the file.
+- A table or view that was dropped or renamed has its file deleted. Only files with pgmigrate's own header are deleted; other files in `schemas/` are left alone.
+- A `_*.sql` file is written only when the database has objects of that kind, and is deleted when the last one is dropped.
 
 > **Note:** FK constraints defined on *other* tables that point *to* this table are not included — those belong to the other table's snapshot. This limitation is documented in each file's header.
+
+**Not snapshotted:**
+
+- Foreign tables and foreign servers. `snapshot`, `up` and `down` print a warning listing the foreign tables they skipped.
+- Objects in other schemas than `DB_SCHEMA`.
+- Database-wide objects: roles, publications, subscriptions and event triggers.
 
 Example `schemas/orders.sql`:
 
@@ -472,13 +497,14 @@ Example `schemas/orders.sql`:
 -- Auto-generated snapshot (2024-01-03 15:30:00)
 -- DO NOT EXECUTE — this is a reference file only.
 --
--- Includes: columns, sequences, indexes, constraints, and outgoing FK references.
+-- Includes: columns, sequences, indexes, constraints, triggers, rules, policies, extended statistics, comments and outgoing FK references.
 -- Excludes: FK constraints from other tables pointing to this one.
 -- The migrations/ directory is the source of truth for schema changes.
 
 CREATE TABLE public.orders (
     id integer NOT NULL,
     user_id integer NOT NULL,
+    status public.order_status DEFAULT 'pending'::public.order_status NOT NULL,
     total numeric(10,2) NOT NULL,
     created_at timestamp without time zone DEFAULT now() NOT NULL
 );
@@ -487,7 +513,25 @@ ALTER TABLE ONLY public.orders
     ADD CONSTRAINT orders_pkey PRIMARY KEY (id);
 ```
 
-The snapshot strips `SET` statements, `SELECT` statements, `\connect` directives, and blank lines produced by `pg_dump` to keep the output clean.
+The `public.order_status` enum used by the `status` column is declared in `schemas/_types.sql`:
+
+```sql
+-- Types in schema: public
+-- Database: myapp
+-- Auto-generated snapshot (2024-01-03 15:30:00)
+-- DO NOT EXECUTE — this is a reference file only.
+--
+-- Includes: enums, composite types, range types and domains.
+-- The migrations/ directory is the source of truth for schema changes.
+
+CREATE TYPE public.order_status AS ENUM (
+    'pending',
+    'paid',
+    'shipped'
+);
+```
+
+The snapshot strips the `SET` statements, `set_config` calls, `\connect` directives, header comments, and blank lines that `pg_dump` adds, to keep the output clean. SQL inside function and view bodies is left intact.
 
 ---
 
@@ -530,7 +574,7 @@ pgmigrate/
 │       ├── constants.sh    # Terminal color codes
 │       ├── helpers.sh      # Logging, load_env, env mapping, checksum, UP/DOWN extraction
 │       ├── db.sh           # run_sql, check_connection, ensure_migrations_table
-│       └── snapshot.sh     # generate_schema_snapshot (pg_dump per table)
+│       └── snapshot.sh     # generate_schema_snapshot (per table/view + object files)
 │
 ├── cmd/
 │   ├── help/               # cmd_help

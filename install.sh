@@ -110,11 +110,13 @@ system_info() {
   echo "  Install dir  : ${LIB_DIR}"
   echo "  Launcher     : ${BIN_FILE}"
 
-  local psql_version pg_dump_version
+  local psql_version pg_dump_version pg_restore_version
   psql_version=$(psql --version 2>/dev/null || echo "not found")
   pg_dump_version=$(pg_dump --version 2>/dev/null || echo "not found")
+  pg_restore_version=$(pg_restore --version 2>/dev/null || echo "not found")
   echo "  psql         : ${psql_version}"
   echo "  pg_dump      : ${pg_dump_version}"
+  echo "  pg_restore   : ${pg_restore_version}"
   echo ""
 }
 
@@ -124,7 +126,7 @@ check_dependencies_macos() {
   log_step "Checking dependencies..."
 
   local missing=()
-  for cmd in psql pg_dump; do
+  for cmd in psql pg_dump pg_restore; do
     if ! command -v "$cmd" &>/dev/null; then
       missing+=("$cmd")
     fi
@@ -146,7 +148,7 @@ check_dependencies_linux() {
   log_step "Checking dependencies..."
 
   local missing=()
-  for cmd in psql pg_dump; do
+  for cmd in psql pg_dump pg_restore; do
     if ! command -v "$cmd" &>/dev/null; then
       missing+=("$cmd")
     fi

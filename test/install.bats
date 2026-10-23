@@ -93,6 +93,13 @@ teardown() { teardown_install_env; }
   [[ "$output" == *"Missing dependencies"* ]]
 }
 
+@test "install: macOS missing pg_restore shows warning" {
+  rm "${INSTALL_MOCKS}/pg_restore"
+  run "${INSTALL_SH}" --prefix "${INSTALL_TEST_PREFIX}"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Missing dependencies: pg_restore"* ]]
+}
+
 # ---- Dependency checks — Linux ----------------------------------------------
 
 @test "install: Linux all dependencies present shows success" {

@@ -9,6 +9,13 @@
 #   MOCK_ENSURE_TABLE_FAIL=1  fail when creating _migrations table
 #   MOCK_SQL_EXEC_FAIL=1      fail when executing migration SQL (BEGIN block)
 #   MOCK_TABLES="t1 t2"       space-separated table names to return
+#   MOCK_VIEWS="v1"           space-separated view names to return
+#   MOCK_MATVIEWS="m1"        space-separated materialized view names to return
+#   MOCK_EXTENSIONS="citext"  space-separated installed extensions
+#   MOCK_STANDALONE_SEQUENCES="s1"  sequences not owned by a column
+#   MOCK_STATISTICS="t1:st1"  space-separated table:statistics pairs
+#   MOCK_FOREIGN_TABLES="f1"  space-separated foreign table names
+#   MOCK_RELATIONS_FAIL=1     fail when listing tables and views (snapshot)
 #   MOCK_APPLIED_MIGRATIONS="f1.sql f2.sql"  applied migration filenames
 #   MOCK_CHECKSUM="abc123"    checksum to return for a migration
 #   MOCK_LAST_MIGRATION="f.sql" last applied migration filename
@@ -55,12 +62,47 @@ if echo "$sql" | grep -q "pg_database"; then
   exit 0
 fi
 
-# ---- Table listing (snapshot) -----------------------------------------------
+# ---- Snapshot queries -------------------------------------------------------
 
-if echo "$sql" | grep -q "SELECT tablename FROM pg_tables"; then
-  for table in ${MOCK_TABLES:-}; do
-    echo "$table"
+if echo "$sql" | grep -q "FROM pg_extension"; then
+  for extension in ${MOCK_EXTENSIONS:-}; do
+    echo "CREATE EXTENSION IF NOT EXISTS ${extension} WITH SCHEMA public;"
   done
+  exit 0
+fi
+
+if echo "$sql" | grep -q "relkind = 'S'"; then
+  for sequence in ${MOCK_STANDALONE_SEQUENCES:-}; do
+    echo "$sequence"
+  done
+  exit 0
+fi
+
+if echo "$sql" | grep -q "relkind IN ('r', 'p', 'v', 'm')"; then
+  if [[ "${MOCK_RELATIONS_FAIL:-0}" == "1" ]]; then
+    echo "ERROR:  canceling statement due to statement timeout" >&2
+    exit 1
+  fi
+  {
+    for table in ${MOCK_TABLES:-};    do echo "${table}|r"; done
+    for view in ${MOCK_VIEWS:-};      do echo "${view}|v"; done
+    for view in ${MOCK_MATVIEWS:-};   do echo "${view}|m"; done
+  } | sort
+  exit 0
+fi
+
+if echo "$sql" | grep -q "pg_statistic_ext"; then
+  table=$(echo "$sql" | grep -oE "'[^']+'\)::regclass" | sed "s/'//g; s/)::regclass//")
+  for pair in ${MOCK_STATISTICS:-}; do
+    if [[ "${pair%%:*}" == "$table" ]]; then
+      echo "CREATE STATISTICS public.${pair#*:} (dependencies) ON a, b FROM ${table};"
+    fi
+  done
+  exit 0
+fi
+
+if echo "$sql" | grep -q "relkind = 'f'"; then
+  echo "${MOCK_FOREIGN_TABLES:-}" | xargs | sed 's/ /, /g'
   exit 0
 fi
 
