@@ -12,6 +12,7 @@ Each release is tagged in git as `vX.Y.Z`. See [CHANGELOG.md](CHANGELOG.md) for 
 
 | Version | Date       | Summary                                              | Details |
 |---------|------------|------------------------------------------------------|---------|
+| 1.2.0   | 2026-10-24 | `up N` / `down N` step counts and numbered `status` | [Changelog](CHANGELOG.md#120---2026-10-24) |
 | 1.1.1   | 2026-10-24 | Snapshots cover all schema-level objects and drop stale files | [Changelog](CHANGELOG.md#111---2026-10-24) |
 | 1.1.0   | 2026-10-24 | `--version` / `-v` command                           | [Changelog](CHANGELOG.md#110---2026-10-24) |
 | 1.0.1   | 2026-10-23 | Safer `pgmigrate uninstall` with permission checks and proper exit codes | [Changelog](CHANGELOG.md#101---2026-10-23) |
